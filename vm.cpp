@@ -147,7 +147,13 @@ public:
     bool getZF() const { return ZF; }
     bool getOF() const { return OF; }
     bool getUF() const { return UF; }
-    void print() const { /* P2 fills */ }
+    void print() const {
+        cout << "#Flags#"
+             << (CF ? 1 : 0) << "#"
+             << (ZF ? 1 : 0) << "#"
+             << (OF ? 1 : 0) << "#"
+             << (UF ? 1 : 0) << "#\n";
+    }
 };
 
 // ============================================================
