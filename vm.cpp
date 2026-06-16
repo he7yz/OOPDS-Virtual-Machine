@@ -48,7 +48,7 @@ public:
 };
 
 // ============================================================
-// CustomStack<T>  — Author: [P2]
+// CustomStack<T>  — Author: helyz
 // Fixed 8-slot stack used inside CPU.
 // ============================================================
 template <typename T>
@@ -107,7 +107,7 @@ public:
 // ============================================================
 // Register (abstract base)  — Author: [P3]
 // GeneralRegister             — Author: [P3]
-// FlagRegister                — Author: [P2]
+// FlagRegister                — Author: Helyz
 // ============================================================
 class Register {
 protected:
@@ -147,7 +147,13 @@ public:
     bool getZF() const { return ZF; }
     bool getOF() const { return OF; }
     bool getUF() const { return UF; }
-    void print() const { /* P2 fills */ }
+    void print() const {
+        cout << "#Flags#"
+             << (CF ? 1 : 0) << "#"
+             << (ZF ? 1 : 0) << "#"
+             << (OF ? 1 : 0) << "#"
+             << (UF ? 1 : 0) << "#\n";
+    }
 };
 
 // ============================================================
@@ -171,7 +177,7 @@ public:
 };
 
 // ============================================================
-// CPU  — Author: [P2]
+// CPU  — Author: Helyz
 // Owns the stack and program counter.
 // ============================================================
 class CPU {
@@ -184,7 +190,13 @@ public:
     void push(int val)        { stack.push(val); }  // P2 manages SI
     int  pop()                { return stack.pop(); }
     int  peek()         const { return stack.peek(); }
-    void print()        const { /* P2 fills */ }
+    void print() const {
+        cout << "#PC#";
+        if      (pc < 10)   cout << "000";
+        else if (pc < 100)  cout << "00";
+        else if (pc < 1000) cout << "0";
+        cout << pc << "#\n";
+    }
 };
 
 // ============================================================
@@ -286,7 +298,7 @@ public:
 };
 
 // ============================================================
-// ShiftInstruction  — Author: [P1] shell, [P2] fills leaves
+// ShiftInstruction  — Author: [P1] shell, helyz
 // ============================================================
 class ShiftInstruction : public Instruction {
 protected:
@@ -442,7 +454,7 @@ public:
 };
 
 // ============================================================
-// StackInstruction  — Author: [P1] shell, [P2] fills leaves
+// StackInstruction  — Author: alex, helyz
 // ============================================================
 class StackInstruction : public Instruction {
 protected:
@@ -681,13 +693,27 @@ void IncInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 void DecInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 
 // P2 fills:
-void ShlInstruction::execute(VirtualMachine& vm) { /* P2 */ }
+void ShlInstruction::execute(VirtualMachine& vm) {
+    int original = vm.getRegister(registerNum).getValue();
+    int shifted  = original << amount;
+    vm.getRegister(registerNum).setValue(shifted);
+    vm.getFlags().setFlags(shifted, original, 0);
+}
 void ShrInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void RolInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void RorInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void PushInstruction::execute(VirtualMachine& vm){ /* P2 */ }
 void PopInstruction::execute(VirtualMachine& vm) { /* P2 */ }
-void FlagRegister::setFlags(int r, int a, int b) { /* P2 */ }
+void FlagRegister::setFlags(int result, int op1, int op2) {
+    int8_t narrowed = static_cast<int8_t>(result);
+    ZF = (narrowed == 0);
+    OF = (result > 127);
+    UF = (result < -128);
+    unsigned int unsignedSum =
+        static_cast<unsigned int>(static_cast<uint8_t>(op1)) +
+        static_cast<unsigned int>(static_cast<uint8_t>(op2));
+    CF = (unsignedSum > 0xFF);
+}
 
 // P3 fills:
 void InputInstruction::execute(VirtualMachine& vm)   { /* P3 */ }
