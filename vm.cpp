@@ -687,7 +687,13 @@ void RolInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void RorInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void PushInstruction::execute(VirtualMachine& vm){ /* P2 */ }
 void PopInstruction::execute(VirtualMachine& vm) { /* P2 */ }
-void FlagRegister::setFlags(int r, int a, int b) { /* P2 */ }
+void FlagRegister::setFlags(int result, int op1, int op2) {
+    int8_t narrowed = static_cast<int8_t>(result);
+    ZF = (narrowed == 0);
+    OF = (result > 127);
+    UF = (result < -128);
+    CF = false;
+}
 
 // P3 fills:
 void InputInstruction::execute(VirtualMachine& vm)   { /* P3 */ }
