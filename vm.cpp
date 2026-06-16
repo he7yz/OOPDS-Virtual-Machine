@@ -693,7 +693,12 @@ void IncInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 void DecInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 
 // P2 fills:
-void ShlInstruction::execute(VirtualMachine& vm) { /* P2 */ }
+void ShlInstruction::execute(VirtualMachine& vm) {
+    int original = vm.getRegister(registerNum).getValue();
+    int shifted  = original << amount;
+    vm.getRegister(registerNum).setValue(shifted);
+    vm.getFlags().setFlags(shifted, original, 0);
+}
 void ShrInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void RolInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void RorInstruction::execute(VirtualMachine& vm) { /* P2 */ }
