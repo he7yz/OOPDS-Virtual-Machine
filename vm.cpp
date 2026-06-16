@@ -48,7 +48,7 @@ public:
 };
 
 // ============================================================
-// CustomStack<T>  — Author: [P2]
+// CustomStack<T>  — Author: helyz
 // Fixed 8-slot stack used inside CPU.
 // ============================================================
 template <typename T>
@@ -107,7 +107,7 @@ public:
 // ============================================================
 // Register (abstract base)  — Author: [P3]
 // GeneralRegister             — Author: [P3]
-// FlagRegister                — Author: [P2]
+// FlagRegister                — Author: Helyz
 // ============================================================
 class Register {
 protected:
@@ -171,7 +171,7 @@ public:
 };
 
 // ============================================================
-// CPU  — Author: [P2]
+// CPU  — Author: Helyz
 // Owns the stack and program counter.
 // ============================================================
 class CPU {
@@ -286,7 +286,7 @@ public:
 };
 
 // ============================================================
-// ShiftInstruction  — Author: [P1] shell, [P2] fills leaves
+// ShiftInstruction  — Author: [P1] shell, helyz
 // ============================================================
 class ShiftInstruction : public Instruction {
 protected:
@@ -442,7 +442,7 @@ public:
 };
 
 // ============================================================
-// StackInstruction  — Author: [P1] shell, [P2] fills leaves
+// StackInstruction  — Author: alex, helyz
 // ============================================================
 class StackInstruction : public Instruction {
 protected:
