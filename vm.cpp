@@ -190,7 +190,13 @@ public:
     void push(int val)        { stack.push(val); }  // P2 manages SI
     int  pop()                { return stack.pop(); }
     int  peek()         const { return stack.peek(); }
-    void print()        const { /* P2 fills */ }
+    void print() const {
+        cout << "#PC#";
+        if      (pc < 10)   cout << "000";
+        else if (pc < 100)  cout << "00";
+        else if (pc < 1000) cout << "0";
+        cout << pc << "#\n";
+    }
 };
 
 // ============================================================
