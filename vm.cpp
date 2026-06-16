@@ -692,7 +692,10 @@ void FlagRegister::setFlags(int result, int op1, int op2) {
     ZF = (narrowed == 0);
     OF = (result > 127);
     UF = (result < -128);
-    CF = false;
+    unsigned int unsignedSum =
+        static_cast<unsigned int>(static_cast<uint8_t>(op1)) +
+        static_cast<unsigned int>(static_cast<uint8_t>(op2));
+    CF = (unsignedSum > 0xFF);
 }
 
 // P3 fills:
