@@ -126,7 +126,24 @@ public:
     GeneralRegister(const string& n) : name(n) { value = 0; }
     int  getValue() const   { return value; }        // P3 fills
     void setValue(int v)    { value = (int8_t)v; }   // P3 fills (clamps to int8)
-    void print() const      { /* P3 fills */ }
+    void print() const      { 
+        int v = value;
+        if (v < 0) {
+            cout << "#";
+
+            int display = ( v < 0 ) ? ( v + 256 ) : v;
+            if (display < 1000) cout << "0";
+            if (display < 100) cout << "0";
+            if (display < 10) cout << "0";
+            cout << display;
+        } else {
+            cout << "#";
+            if (v < 1000) cout << "0";
+            if (v < 100) cout << "0";
+            if (v < 10) cout << "0";
+            cout << v;
+        }
+    }
 };
 
 class FlagRegister : public Register {
@@ -716,12 +733,76 @@ void FlagRegister::setFlags(int result, int op1, int op2) {
 }
 
 // P3 fills:
-void InputInstruction::execute(VirtualMachine& vm)   { /* P3 */ }
-void DisplayInstruction::execute(VirtualMachine& vm) { /* P3 */ }
-void LoadRegInstruction::execute(VirtualMachine& vm) { /* P3 */ }
-void LoadMemInstruction::execute(VirtualMachine& vm) { /* P3 */ }
-void StoreRegInstruction::execute(VirtualMachine& vm){ /* P3 */ }
-void StoreMemInstruction::execute(VirtualMachine& vm){ /* P3 */ }
+// Prompts user, validates range  -128..127, set flags.
+void InputInstruction::execute(VirtualMachine& vm)   { 
+    int val;
+    cout << "?" << endl;
+    cin >> val;
+
+    // Clamp & flag
+    if (val > 127) {
+        vm.getFlags().setFlags(val, 0, 0); // trigger OF
+        val = 127;
+    } else if (val < -128 ) {
+        vm.getFlags().setFlags(val, 0, 0); // trigger UF
+        val = -128;
+    } else {
+        vm.getFlags().setFlags(val, 0, 0); // handles ZF
+    }
+    vm.getRegister(registerNum).setValue(val);
+}
+
+// Display <Rn>
+// Prints the signed decimal value in the register.
+void DisplayInstruction::execute(VirtualMachine& vm) {
+    cout << vm.getRegister(registerNum).getValue() << endl;
+}
+
+// LOAD R1, [20] - direct address
+void LoadRegInstruction::execute(VirtualMachine& vm) {
+    if (addr < 0 || addr > 63) {
+        cerr << "LOAD: address " << addr << " out of range" << endl;
+        exit(1);
+    }
+    int val = vm.getMemory().read(addr);
+    vm.getRegister(registerNum).setValue(val);
+    vm.getFlags().setFlags(val, 0, 0);
+}
+
+// LOAD R1, [R2] - register-indirect address
+void LoadMemInstruction::execute(VirtualMachine& vm) {
+    int addr = vm.getRegister(addrReg).getValue();
+    if (addr < 0 || addr > 63) {
+        cerr << "LOAD: address " << addr << " out of range" << endl;
+        exit(1);
+    }
+    int val = vm.getMemory().read(addr);
+    vm.getRegister(registerNum).setValue(val);
+    vm.getFlags().setFlags(val, 0, 0);
+}
+
+// STORE 20, R3 - direct address, source register
+void StoreRegInstruction::execute(VirtualMachine& vm){
+    if (addr < 0 || addr > 63) {
+        cerr << "STORE: address " << addr << " out of range" << endl;
+        exit(1);
+    }
+    int val = vm.getRegister(registerNum).getValue();
+    vm.getMemory().write(addr, val);
+    // STORE does not update flags 
+}
+
+// STORE [R2], R1 - address-in-register, source register
+void StoreMemInstruction::execute(VirtualMachine& vm){
+    int addr = vm.getRegister(addrReg).getValue();
+    if (addr < 0 || addr > 63) {
+        cerr << "STORE: address " << addr << " out of range" << endl;
+        exit(1);
+    }
+    int val = vm.getRegister(registerNum).getValue();
+    vm.getMemory().write(addr, val);
+    // STORE does not update flags
+}
 
 // P1 fills last (after all print() methods are done):
 void VirtualMachine::printState() const { /* P1 fills last */ }
