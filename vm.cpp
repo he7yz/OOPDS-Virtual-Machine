@@ -716,8 +716,24 @@ void ShlInstruction::execute(VirtualMachine& vm) {
     vm.getRegister(registerNum).setValue(shifted);
     vm.getFlags().setFlags(shifted, original, 0);
 }
-void ShrInstruction::execute(VirtualMachine& vm) { /* P2 */ }
-void RolInstruction::execute(VirtualMachine& vm) { /* P2 */ }
+void ShrInstruction::execute(VirtualMachine& vm) {
+    int original = vm.getRegister(registerNum).getValue();
+    uint8_t asUnsigned = static_cast<uint8_t>(original);
+    int shifted        = static_cast<int>(asUnsigned >> amount);
+    vm.getRegister(registerNum).setValue(shifted);
+    vm.getFlags().setFlags(shifted, original, 0);
+}
+void RolInstruction::execute(VirtualMachine& vm) {
+    int     original = vm.getRegister(registerNum).getValue();
+    uint8_t uval     = static_cast<uint8_t>(original);
+    int     n        = amount % 8;  // mod 8 prevents shift-by-8 undefined behaviour
+    uint8_t rotated  = (n == 0)
+        ? uval
+        : static_cast<uint8_t>((uval << n) | (uval >> (8 - n)));
+    int result = static_cast<int>(static_cast<int8_t>(rotated));
+    vm.getRegister(registerNum).setValue(result);
+    vm.getFlags().setFlags(result, original, 0);
+}
 void RorInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void PushInstruction::execute(VirtualMachine& vm){ /* P2 */ }
 void PopInstruction::execute(VirtualMachine& vm) { /* P2 */ }
