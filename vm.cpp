@@ -716,7 +716,13 @@ void ShlInstruction::execute(VirtualMachine& vm) {
     vm.getRegister(registerNum).setValue(shifted);
     vm.getFlags().setFlags(shifted, original, 0);
 }
-void ShrInstruction::execute(VirtualMachine& vm) { /* P2 */ }
+void ShrInstruction::execute(VirtualMachine& vm) {
+    int original = vm.getRegister(registerNum).getValue();
+    uint8_t asUnsigned = static_cast<uint8_t>(original);
+    int shifted        = static_cast<int>(asUnsigned >> amount);
+    vm.getRegister(registerNum).setValue(shifted);
+    vm.getFlags().setFlags(shifted, original, 0);
+}
 void RolInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void RorInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void PushInstruction::execute(VirtualMachine& vm){ /* P2 */ }
