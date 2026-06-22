@@ -745,7 +745,10 @@ void RorInstruction::execute(VirtualMachine& vm) {
     vm.getRegister(registerNum).setValue(result);
     vm.getFlags().setFlags(result, original, 0);
 }
-void PushInstruction::execute(VirtualMachine& vm){ /* P2 */ }
+void PushInstruction::execute(VirtualMachine& vm) {
+    int valueToSave = vm.getRegister(registerNum).getValue();
+    vm.getCPU().push(valueToSave);
+}
 void PopInstruction::execute(VirtualMachine& vm) { /* P2 */ }
 void FlagRegister::setFlags(int result, int op1, int op2) {
     int8_t narrowed = static_cast<int8_t>(result);
