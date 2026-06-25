@@ -183,14 +183,57 @@ public:
     Memory() { for (int i = 0; i < 64; i++) mem[i] = 0; }
 
     int read(int addr) {           // P4 fills (add bounds check)
+        if (addr < 0 || addr > 63) {
+            cerr << "Memory Error: Address " << addr << "out of bounds for read" << endl;
+            exit(1);
+        }
         return mem[addr];
     }
 
     void write(int addr, int val) { // P4 fills (add bounds check)
+        if (addr < 0 || addr > 63) {
+            cerr << "Memory Error: Address " << addr << " out of bounds for write." << endl;
+            exit(1);
+        }
         mem[addr] = (int8_t)val;
     }
 
-    void print() const { /* P4 fills */ }
+    void print() const {
+        cout << "#Memory#\n";
+
+        for (int i = 0; i < 64; i++) {
+            int v = mem[i];
+            cout << "#";
+
+            if (v < 0) {
+                cout << "-";
+                int display = -v; //Converts to positive for printing padding
+
+                if (display < 100) 
+                    cout << "0";
+
+                if (display < 10) cout << "0";
+                cout << display;    
+            } 
+            else {
+                if (v < 1000)
+                    cout << "0";
+                
+                if (v < 100)
+                    cout << "0";
+                
+                if (v < 10)
+                    cout << "0";
+
+                cout << v;
+            }
+
+            //Add a new line after every 8th item to make the grid
+            if ((i + 1) % 8 == 0) {
+                cout << "#\n";
+            }
+        }
+    }
 };
 
 // ============================================================
