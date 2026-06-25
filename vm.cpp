@@ -788,8 +788,21 @@ void DivInstruction::execute(VirtualMachine& vm) {
     vm.getFlags().setFlags(result, op1, op2);
 }
 
-void IncInstruction::execute(VirtualMachine& vm) { /* P4 */ }
-void DecInstruction::execute(VirtualMachine& vm) { /* P4 */ }
+void IncInstruction::execute(VirtualMachine& vm) {
+    int op1 = vm.getRegister(destReg).getValue();
+    int result = op1 + 1;
+
+    vm.getRegister(destReg).setValue(result);
+    vm.getFlags().setFlags(result, op1, 1);
+}
+
+void DecInstruction::execute(VirtualMachine& vm) {
+    int op1 = vm.getRegister(destReg).getValue();
+    int result = op1 - 1;
+
+    vm.getRegister(destReg).setValue(result);
+    vm.getFlags().setFlags(result, op1, -1);
+}
 
 // P2 fills:
 void ShlInstruction::execute(VirtualMachine& vm) {
