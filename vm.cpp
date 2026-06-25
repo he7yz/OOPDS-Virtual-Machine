@@ -765,8 +765,29 @@ void SubInstruction::execute(VirtualMachine& vm) {
     vm.getFlags().setFlags(result, op1, -op2); 
 }
 
-void MulInstruction::execute(VirtualMachine& vm) { /* P4 */ }
-void DivInstruction::execute(VirtualMachine& vm) { /* P4 */ }
+void MulInstruction::execute(VirtualMachine& vm) {
+    int op1 = vm.getRegister(destReg).getValue();
+    int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
+
+    int result = op1 * op2;
+    vm.getRegister(destReg).setValue(result);
+    vm.getFlags().setFlags(result, op1, op2); 
+}
+
+void DivInstruction::execute(VirtualMachine& vm) {
+    int op1 = vm.getRegister(destReg).getValue();
+    int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
+
+    if (op2 == 0) {
+        cerr << "Arithmetic Error: Division by zero." << endl;
+        exit(1);
+    }
+
+    int result = op1 / op2;
+    vm.getRegister(destReg).setValue(result);
+    vm.getFlags().setFlags(result, op1, op2);
+}
+
 void IncInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 void DecInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 
