@@ -183,10 +183,18 @@ public:
     Memory() { for (int i = 0; i < 64; i++) mem[i] = 0; }
 
     int read(int addr) {           // P4 fills (add bounds check)
+        if (addr < 0 || addr > 63) {
+            cerr << "Memory Error: Address " << addr << "out of bounds for read" << endl;
+            exit(1);
+        }
         return mem[addr];
     }
 
     void write(int addr, int val) { // P4 fills (add bounds check)
+        if (addr < 0 || addr > 63) {
+            cerr << "Memory Error: Address " << addr << " out of bounds for write." << endl;
+            exit(1);
+        }
         mem[addr] = (int8_t)val;
     }
 
