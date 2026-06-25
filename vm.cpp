@@ -745,8 +745,26 @@ void ResetInstruction::execute(VirtualMachine& vm) {
 // ============================================================
 
 // P4 fills:
-void AddInstruction::execute(VirtualMachine& vm) { /* P4 */ }
-void SubInstruction::execute(VirtualMachine& vm) { /* P4 */ }
+void AddInstruction::execute(VirtualMachine& vm) {
+    int op1 = vm.getRegister(destReg).getValue();
+    int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
+
+    int result = op1 + op2;
+    vm.getRegister(destReg).setValue(result);
+    vm.getFlags().setFlags(result, op1, op2);
+}
+
+void SubInstruction::execute(VirtualMachine& vm) {
+    int op1 = vm.getRegister(destReg).getValue();
+    int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
+
+    int result = op1 - op2;
+    vm.getRegister(destReg).setValue(result);
+
+    // Passing -op2 helps P2's carry flag logic work correctly
+    vm.getFlags().setFlags(result, op1, -op2); 
+}
+
 void MulInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 void DivInstruction::execute(VirtualMachine& vm) { /* P4 */ }
 void IncInstruction::execute(VirtualMachine& vm) { /* P4 */ }
