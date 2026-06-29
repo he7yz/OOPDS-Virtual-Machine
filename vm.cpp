@@ -17,7 +17,7 @@ class CustomVector {
     T*  data;
     int sz;
     int cap;
-
+ 
     void grow() {
         cap *= 2;
         T* tmp = new T[cap];
@@ -25,16 +25,16 @@ class CustomVector {
         delete[] data;
         data = tmp;
     }
-
+ 
 public:
     CustomVector() : sz(0), cap(8) { data = new T[cap]; }
     ~CustomVector() { delete[] data; }
-
+ 
     void push_back(const T& item) {
         if (sz == cap) grow();
         data[sz++] = item;
     }
-
+ 
     T& get(int i) {
         if (i < 0 || i >= sz) {
             cerr << "CustomVector: index out of bounds" << endl;
@@ -42,10 +42,23 @@ public:
         }
         return data[i];
     }
+ 
+    const T& get(int i) const {
+        if (i < 0 || i >= sz) {
+            cerr << "CustomVector: index out of bounds" << endl;
+            exit(1);
+        }
+        return data[i];
+    }
 
-    int  getSize() const { return sz; }
+    // overloaded [] for getting i
+    T& operator[](int i)       { return get(i); }
+    const T& operator[](int i) const { return get(i); }
+ 
+    int getSize() const { return sz; }
     bool isEmpty() const { return sz == 0; }
 };
+
 
 // ============================================================
 // CustomStack<T>  — Author: helyz
@@ -122,25 +135,26 @@ public:
 class GeneralRegister : public Register {
     string name;
 public:
-    GeneralRegister()               {}
+    GeneralRegister()                {}
     GeneralRegister(const string& n) : name(n) { value = 0; }
-    int  getValue() const   { return value; }        // P3 fills
-    void setValue(int v)    { value = (int8_t)v; }   // P3 fills (clamps to int8)
-    void print() const      { 
+    int  getValue() const  { return value; }
+    void setValue(int v)   { value = (int8_t)v; }
+    void print() const {
+        // NOTE (P3): current code prints unsigned for negatives
+        // e.g. -5 → #0251. Decision from Q16 is #-005. Fix this.
         int v = value;
         if (v < 0) {
             cout << "#";
-
-            int display = ( v < 0 ) ? ( v + 256 ) : v;
+            int display = (v < 0) ? (v + 256) : v;
             if (display < 1000) cout << "0";
-            if (display < 100) cout << "0";
-            if (display < 10) cout << "0";
+            if (display < 100)  cout << "0";
+            if (display < 10)   cout << "0";
             cout << display;
         } else {
             cout << "#";
             if (v < 1000) cout << "0";
-            if (v < 100) cout << "0";
-            if (v < 10) cout << "0";
+            if (v < 100)  cout << "0";
+            if (v < 10)   cout << "0";
             cout << v;
         }
     }
@@ -151,7 +165,7 @@ class FlagRegister : public Register {
 public:
     FlagRegister() : CF(false), ZF(false), OF(false), UF(false) {}
 
-    void setFlags(int result, int op1, int op2); // P2 fills
+    void setFlags(int result, int op1, int op2);
 
     void resetFlag(FlagCode f) {
         if      (f == FLAG_CF) CF = false;
@@ -164,6 +178,9 @@ public:
     bool getZF() const { return ZF; }
     bool getOF() const { return OF; }
     bool getUF() const { return UF; }
+
+    // NOTE (P2): confirm flag print order matches spec diagram.
+    // PDF p.2 lists CF, ZF, UF, OF top-to-bottom — verify before submit.
     void print() const {
         cout << "#Flags#"
              << (CF ? 1 : 0) << "#"
@@ -182,17 +199,19 @@ class Memory {
 public:
     Memory() { for (int i = 0; i < 64; i++) mem[i] = 0; }
 
-    int read(int addr) {           // P4 fills (add bounds check)
+    int read(int addr) {
         if (addr < 0 || addr > 63) {
-            cerr << "Memory Error: Address " << addr << "out of bounds for read" << endl;
+            cerr << "Memory Error: Address " << addr
+                 << " out of bounds for read" << endl;
             exit(1);
         }
         return mem[addr];
     }
 
-    void write(int addr, int val) { // P4 fills (add bounds check)
+    void write(int addr, int val) {
         if (addr < 0 || addr > 63) {
-            cerr << "Memory Error: Address " << addr << " out of bounds for write." << endl;
+            cerr << "Memory Error: Address " << addr
+                 << " out of bounds for write." << endl;
             exit(1);
         }
         mem[addr] = (int8_t)val;
@@ -200,56 +219,53 @@ public:
 
     void print() const {
         cout << "#Memory#\n";
-
         for (int i = 0; i < 64; i++) {
             int v = mem[i];
             cout << "#";
-
             if (v < 0) {
                 cout << "-";
-                int display = -v; //Converts to positive for printing padding
-
-                if (display < 100) 
-                    cout << "0";
-
-                if (display < 10) cout << "0";
-                cout << display;    
-            } 
-            else {
-                if (v < 1000)
-                    cout << "0";
-                
-                if (v < 100)
-                    cout << "0";
-                
-                if (v < 10)
-                    cout << "0";
-
+                int display = -v;
+                if (display < 100) cout << "0";
+                if (display < 10)  cout << "0";
+                cout << display;
+            } else {
+                if (v < 1000) cout << "0";
+                if (v < 100)  cout << "0";
+                if (v < 10)   cout << "0";
                 cout << v;
             }
-
-            //Add a new line after every 8th item to make the grid
-            if ((i + 1) % 8 == 0) {
-                cout << "#\n";
-            }
+            if ((i + 1) % 8 == 0) cout << "#\n";
         }
     }
 };
 
 // ============================================================
 // CPU  — Author: Helyz
-// Owns the stack and program counter.
+// Composition: owns Memory and CustomStack.
+// Aggregation: uses FlagRegister (can exist independently of CPU).
+// Also owns the program counter.
 // ============================================================
 class CPU {
-    int pc;
+    int              pc;
     CustomStack<int> stack;
+    Memory           memory;   // composition  — CPU owns Memory
+    FlagRegister     flags;    // aggregation  — CPU uses FlagRegister
 public:
     CPU() : pc(0) {}
     int  getPC()        const { return pc; }
     void incrementPC()        { pc++; }
-    void push(int val)        { stack.push(val); }  // P2 manages SI
+    void push(int val)        { stack.push(val); }
     int  pop()                { return stack.pop(); }
     int  peek()         const { return stack.peek(); }
+
+    // non-const accessors — used by execute() bodies via vm.getX()
+    Memory&             getMemory()       { return memory; }
+    FlagRegister&       getFlags()        { return flags;  }
+
+    // const accessors — used by printState() const
+    const Memory&       getMemory() const { return memory; }
+    const FlagRegister& getFlags()  const { return flags;  }
+
     void print() const {
         cout << "#PC#";
         if      (pc < 10)   cout << "000";
@@ -260,13 +276,10 @@ public:
 };
 
 // ============================================================
-// VirtualMachine  — Author: [P1] shell
-// Owns all components. Teams call getX() in execute().
+// VirtualMachine  — CHIAM JUIN HOONG
 // ============================================================
 class VirtualMachine {
-    CPU             cpu;
-    Memory          memory;
-    FlagRegister    flags;
+    CPU           cpu;
     CustomVector<GeneralRegister> registers;
 public:
     VirtualMachine() {
@@ -276,11 +289,12 @@ public:
             registers.push_back(GeneralRegister(names[i]));
     }
 
-    CPU&             getCPU()          { return cpu;            }
-    GeneralRegister& getRegister(int i){ return registers.get(i);}
-    FlagRegister&    getFlags()        { return flags;          }
-    Memory&          getMemory()       { return memory;         }
-    void printState() const;  // P1 fills last (calls each print())
+    CPU&             getCPU()           { return cpu;                }
+    GeneralRegister& getRegister(int i) { return registers.get(i);  }
+    FlagRegister&    getFlags()         { return cpu.getFlags();     }
+    Memory&          getMemory()        { return cpu.getMemory();    }
+
+    void printState() const;
 };
 
 // ============================================================
@@ -295,7 +309,7 @@ public:
 };
 
 // ============================================================
-// ArithmeticInstruction  — Author: [P1] shell, [P4] fills leaves
+// ArithmeticInstruction  — CHIAM JUIN HOONG shell, [P4] fills leaves
 // isNum: true  → srcVal is a literal integer
 //        false → srcVal is a register index
 // ============================================================
@@ -305,60 +319,54 @@ protected:
     int  srcVal;
     bool isNum;
 public:
-    ArithmeticInstruction(int d, int s, bool n)
-        : destReg(d), srcVal(s), isNum(n) {}
+    ArithmeticInstruction(int d, int s, bool n) : destReg(d), srcVal(s), isNum(n) {}
     string getName() { return "ARITH"; }
 };
 
 class AddInstruction : public ArithmeticInstruction {
 public:
-    AddInstruction(int d, int s, bool n)
-        : ArithmeticInstruction(d, s, n) {}
-    void   execute(VirtualMachine& vm); // P4 fills
+    AddInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
+    void execute(VirtualMachine& vm);
     string getName() { return "ADD"; }
 };
 
 class SubInstruction : public ArithmeticInstruction {
 public:
-    SubInstruction(int d, int s, bool n)
-        : ArithmeticInstruction(d, s, n) {}
-    void   execute(VirtualMachine& vm); // P4 fills
+    SubInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
+    void execute(VirtualMachine& vm);
     string getName() { return "SUB"; }
 };
 
 class MulInstruction : public ArithmeticInstruction {
 public:
-    MulInstruction(int d, int s, bool n)
-        : ArithmeticInstruction(d, s, n) {}
-    void   execute(VirtualMachine& vm); // P4 fills
+    MulInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
+    void execute(VirtualMachine& vm);
     string getName() { return "MUL"; }
 };
 
 class DivInstruction : public ArithmeticInstruction {
 public:
-    DivInstruction(int d, int s, bool n)
-        : ArithmeticInstruction(d, s, n) {}
-    void   execute(VirtualMachine& vm); // P4 fills
+    DivInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
+    void execute(VirtualMachine& vm);
     string getName() { return "DIV"; }
 };
 
-// INC/DEC: inherit srcVal=1, isNum=true for consistency
 class IncInstruction : public ArithmeticInstruction {
 public:
     IncInstruction(int d) : ArithmeticInstruction(d, 1, true) {}
-    void   execute(VirtualMachine& vm); // P4 fills: dest = dest + 1
+    void execute(VirtualMachine& vm);
     string getName() { return "INC"; }
 };
 
 class DecInstruction : public ArithmeticInstruction {
 public:
     DecInstruction(int d) : ArithmeticInstruction(d, 1, true) {}
-    void   execute(VirtualMachine& vm); // P4 fills: dest = dest - 1
+    void execute(VirtualMachine& vm);
     string getName() { return "DEC"; }
 };
 
 // ============================================================
-// ShiftInstruction  — Author: [P1] shell, helyz
+// ShiftInstruction  — CHIAM JUIN HOONG shell, helyz fills leaves
 // ============================================================
 class ShiftInstruction : public Instruction {
 protected:
@@ -372,33 +380,33 @@ public:
 class ShlInstruction : public ShiftInstruction {
 public:
     ShlInstruction(int r, int a) : ShiftInstruction(r, a) {}
-    void execute(VirtualMachine& vm); // P2 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "SHL"; }
 };
 
 class ShrInstruction : public ShiftInstruction {
 public:
     ShrInstruction(int r, int a) : ShiftInstruction(r, a) {}
-    void execute(VirtualMachine& vm); // P2 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "SHR"; }
 };
 
 class RolInstruction : public ShiftInstruction {
 public:
     RolInstruction(int r, int a) : ShiftInstruction(r, a) {}
-    void execute(VirtualMachine& vm); // P2 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "ROL"; }
 };
 
 class RorInstruction : public ShiftInstruction {
 public:
     RorInstruction(int r, int a) : ShiftInstruction(r, a) {}
-    void execute(VirtualMachine& vm); // P2 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "ROR"; }
 };
 
 // ============================================================
-// IOInstruction  — Author: [P1] shell, [P3] fills leaves
+// IOInstruction  — CHIAM JUIN HOONG shell, [P3] fills leaves
 // ============================================================
 class IOInstruction : public Instruction {
 protected:
@@ -411,54 +419,56 @@ public:
 class InputInstruction : public IOInstruction {
 public:
     InputInstruction(int r) : IOInstruction(r) {}
-    void execute(VirtualMachine& vm); // P3 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "INPUT"; }
 };
 
 class DisplayInstruction : public IOInstruction {
 public:
     DisplayInstruction(int r) : IOInstruction(r) {}
-    void execute(VirtualMachine& vm); // P3 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "DISPLAY"; }
 };
 
-// LOAD R1, [20]  — destination register + direct address
+// LOAD R1, [20] — dest register, direct memory address
 class LoadRegInstruction : public IOInstruction {
     int addr;
 public:
     LoadRegInstruction(int destReg, int a)
         : IOInstruction(destReg), addr(a) {}
-    void execute(VirtualMachine& vm); // P3 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "LOAD"; }
 };
 
-// LOAD R1, [R2]  — destination register + address-in-register
+// LOAD R1, [R2] — dest register, address held in register
 class LoadMemInstruction : public IOInstruction {
     int addrReg;
 public:
     LoadMemInstruction(int destReg, int aReg)
         : IOInstruction(destReg), addrReg(aReg) {}
-    void execute(VirtualMachine& vm); // P3 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "LOAD"; }
 };
 
-// STORE 20, R3  — direct address + source register
+// STORE R1, 10  — source register, direct destination address
+// (amended syntax: register comes first, address second)
 class StoreRegInstruction : public IOInstruction {
     int addr;
 public:
-    StoreRegInstruction(int a, int srcReg)
+    StoreRegInstruction(int srcReg, int a)
         : IOInstruction(srcReg), addr(a) {}
-    void execute(VirtualMachine& vm); // P3 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "STORE"; }
 };
 
-// STORE [R2], R1  — address-in-register + source register
+// STORE R1, [R2] — source register, destination address held in register
+// (amended syntax: register comes first, indirect address second)
 class StoreMemInstruction : public IOInstruction {
     int addrReg;
 public:
-    StoreMemInstruction(int aReg, int srcReg)
+    StoreMemInstruction(int srcReg, int aReg)
         : IOInstruction(srcReg), addrReg(aReg) {}
-    void execute(VirtualMachine& vm); // P3 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "STORE"; }
 };
 
@@ -503,10 +513,10 @@ public:
 
 // ============================================================
 // ResetInstruction  — CHIAM JUIN HOONG
-// Direct child of Instruction. Zeroes one flag.
+// Direct child of Instruction. Zeroes one specific flag.
 // ============================================================
 class ResetInstruction : public Instruction {
-    int flagTarget; // 0=CF, 1=ZF, 2=OF, 3=UF  (see FlagCode enum)
+    int flagTarget; // 0=CF 1=ZF 2=OF 3=UF  (see FlagCode enum)
 public:
     ResetInstruction(int f) : flagTarget(f) {}
     void   execute(VirtualMachine& vm);
@@ -514,7 +524,7 @@ public:
 };
 
 // ============================================================
-// StackInstruction  — Author: alex, helyz
+// StackInstruction  — CHIAM JUIN HOONG shell, helyz fills leaves
 // ============================================================
 class StackInstruction : public Instruction {
 protected:
@@ -527,14 +537,14 @@ public:
 class PushInstruction : public StackInstruction {
 public:
     PushInstruction(int r) : StackInstruction(r) {}
-    void execute(VirtualMachine& vm); // P2 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "PUSH"; }
 };
 
 class PopInstruction : public StackInstruction {
 public:
     PopInstruction(int r) : StackInstruction(r) {}
-    void execute(VirtualMachine& vm); // P2 fills
+    void   execute(VirtualMachine& vm);
     string getName() { return "POP"; }
 };
 
@@ -544,23 +554,22 @@ public:
 // Phase 2: parseProgram — builds Instruction* queue
 // Phase 3: run          — executes queue, dumps state
 // ============================================================
-class Runner {
+    class Runner {
     VirtualMachine            vm;
     CustomVector<string>      rawLines;
     CustomQueue<Instruction*> program;
 
     // ── Operand helpers ─────────────────────────────────────
-    // "R3"    → 3
     int extractReg(const string& s) {
+        // convert ascii char to string
         return s[1] - '0';
     }
 
-    // "[R3]"  → 3  (register index from indirect token)
     int extractIndirectReg(const string& s) {
+        // convert ascii char to string
         return s[2] - '0';
     }
 
-    // "[20]"  → 20 (direct memory address)
     int extractAddr(const string& s) {
         int val = 0;
         for (int i = 1; s[i] != ']'; i++)
@@ -568,19 +577,21 @@ class Runner {
         return val;
     }
 
-    // "42" / "-5"  → integer
+    // stoi
     int extractNum(const string& s) {
         int val = 0, sign = 1, i = 0;
-        if (!s.empty() && s[0] == '-') { sign = -1; i = 1; }
-        for (; i < (int)s.size(); i++) val = val * 10 + (s[i] - '0');
+        if (!s.empty() && s[0] == '-') {
+            sign = -1;
+            // start at [1] instead of [0] because -ve
+            i = 1;
+        }
+        for (; i < (int)s.size(); i++)
+            val = (val * 10) + (s[i] - '0');   // convert ascii char to string
         return sign * val;
     }
 
     // ── Parse-group helpers ──────────────────────────────────
-
-    Instruction* parseMoveGroup(const string& op,
-                                const string& op1,
-                                const string& op2) {
+    Instruction* parseMoveGroup(const string& op,const string& op1, const string& op2) {
         if (op == "RESET") {
             int f = FLAG_CF;
             if      (op1 == "ZF") f = FLAG_ZF;
@@ -596,13 +607,13 @@ class Runner {
         return new MovImmInstruction(dest, extractNum(op2));
     }
 
-    Instruction* parseArith(const string& op,
-                             const string& op1,
-                             const string& op2) {
+    Instruction* parseArith(const string& op, const string& op1, const string& op2) {
         int dest = extractReg(op1);
         if (op == "INC") return new IncInstruction(dest);
         if (op == "DEC") return new DecInstruction(dest);
         bool numMode = (op2[0] != 'R');
+
+        // decides ADD R1, 2     OR    ADD R1, R2
         int src = numMode ? extractNum(op2) : extractReg(op2);
         if (op == "ADD") return new AddInstruction(dest, src, numMode);
         if (op == "SUB") return new SubInstruction(dest, src, numMode);
@@ -610,9 +621,7 @@ class Runner {
         return new DivInstruction(dest, src, numMode);
     }
 
-    Instruction* parseShift(const string& op,
-                             const string& op1,
-                             const string& op2) {
+    Instruction* parseShift(const string& op, const string& op1, const string& op2) {
         int reg = extractReg(op1);
         int amt = extractNum(op2);
         if (op == "SHL") return new ShlInstruction(reg, amt);
@@ -621,10 +630,8 @@ class Runner {
         return new RorInstruction(reg, amt);
     }
 
-    Instruction* parseIO(const string& op,
-                          const string& op1,
-                          const string& op2) {
-        if (op == "INPUT")   return new InputInstruction(extractReg(op1));
+    Instruction* parseIO(const string& op, const string& op1, const string& op2) {
+        if (op == "INPUT") return new InputInstruction(extractReg(op1));
         if (op == "DISPLAY") return new DisplayInstruction(extractReg(op1));
         if (op == "LOAD") {
             int dest = extractReg(op1);
@@ -632,11 +639,12 @@ class Runner {
                 return new LoadMemInstruction(dest, extractIndirectReg(op2));
             return new LoadRegInstruction(dest, extractAddr(op2));
         }
-        // STORE
-        if (op1[0] == '[')
-            return new StoreMemInstruction(extractIndirectReg(op1),
-                                           extractReg(op2));
-        return new StoreRegInstruction(extractNum(op1), extractReg(op2));
+        // FIX (BUG 1) — STORE syntax amended to STORE R1, 10 / STORE R1, [R2]
+        // op1 is now always the source register; op2 is the destination.
+        int srcReg = extractReg(op1);
+        if (op2[0] == '[')
+            return new StoreMemInstruction(srcReg, extractIndirectReg(op2));
+        return new StoreRegInstruction(srcReg, extractNum(op2));
     }
 
     Instruction* parseStack(const string& op, const string& op1) {
@@ -646,9 +654,6 @@ class Runner {
     }
 
 public:
-    // ── Phase 1: Read .asm file → rawLines ──────────────────
-    // Commas replaced with spaces so stringstream handles all
-    // spacing variants cleanly (e.g. "R0 , R1", "R0,R1").
     void loadProgram(const string& filename) {
         ifstream input(filename.c_str());
         if (input.fail()) {
@@ -661,16 +666,12 @@ public:
                 if (line[i] == ',') line[i] = ' ';
             stringstream check(line);
             string word;
-            if (!(check >> word)) continue; // skip blank lines
+            if (!(check >> word)) continue;
             rawLines.push_back(line);
         }
         input.close();
     }
 
-    // ── Phase 2: Parse rawLines → Instruction* queue ────────
-    // ss >> op1 >> op2 silently leaves them empty for
-    // 0-or-1 operand instructions — safe because parseArith
-    // handles INC/DEC before touching op2.
     void parseProgram() {
         for (int i = 0; i < rawLines.getSize(); i++) {
             stringstream ss(rawLines.get(i));
@@ -680,14 +681,11 @@ public:
 
             if (opcode == "MOV" || opcode == "RESET")
                 instr = parseMoveGroup(opcode, op1, op2);
-            else if (opcode=="ADD" || opcode=="SUB" || opcode=="MUL"
-                  || opcode=="DIV" || opcode=="INC" || opcode=="DEC")
+            else if (opcode=="ADD" || opcode=="SUB" || opcode=="MUL" || opcode=="DIV" || opcode=="INC" || opcode=="DEC")
                 instr = parseArith(opcode, op1, op2);
-            else if (opcode=="SHL" || opcode=="SHR"
-                  || opcode=="ROL" || opcode=="ROR")
+            else if (opcode=="SHL" || opcode=="SHR" || opcode=="ROL" || opcode=="ROR")
                 instr = parseShift(opcode, op1, op2);
-            else if (opcode=="LOAD"  || opcode=="STORE"
-                  || opcode=="INPUT" || opcode=="DISPLAY")
+            else if (opcode=="LOAD"  || opcode=="STORE" || opcode=="INPUT" || opcode=="DISPLAY")
                 instr = parseIO(opcode, op1, op2);
             else if (opcode == "PUSH" || opcode == "POP")
                 instr = parseStack(opcode, op1);
@@ -699,7 +697,6 @@ public:
         }
     }
 
-    // ── Phase 3: Execute queue, dump state ──────────────────
     void run() {
         while (!program.isEmpty()) {
             Instruction* inst = program.dequeue();
@@ -709,13 +706,11 @@ public:
         vm.printState();
     }
 
-    ~Runner() {
-        // Queue fully consumed by run() — nothing left to delete
-    }
+    ~Runner() {}
 };
 
 // ============================================================
-// P1 execute() implementations — MOV x3, RESET
+// P1 execute() — MOV x3, RESET   — CHIAM JUIN HOONG
 // ============================================================
 
 void MovRegRegInstruction::execute(VirtualMachine& vm) {
@@ -741,14 +736,27 @@ void ResetInstruction::execute(VirtualMachine& vm) {
 }
 
 // ============================================================
-// Stub execute() bodies — other teams fill these in
+// FIX (BUG 3) — VirtualMachine::printState()  — CHIAM JUIN HOONG
+// Calls each component's print() in the exact order the spec requires.
+// Format: #Begin# / #Registers...# / #Flags...# / #PC...# / #Memory# / #End#
 // ============================================================
+void VirtualMachine::printState() const {
+    cout << "#Begin#\n";
+    cout << "#Registers";
+    for (int i = 0; i < 8; i++) registers.get(i).print();
+    cout << "#\n";
+    cpu.getFlags().print();
+    cpu.print();
+    cpu.getMemory().print();
+    cout << "#End#\n";
+}
 
-// P4 fills:
+// ============================================================
+// P4 execute() bodies — [P4]
+// ============================================================
 void AddInstruction::execute(VirtualMachine& vm) {
     int op1 = vm.getRegister(destReg).getValue();
     int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
-
     int result = op1 + op2;
     vm.getRegister(destReg).setValue(result);
     vm.getFlags().setFlags(result, op1, op2);
@@ -757,32 +765,23 @@ void AddInstruction::execute(VirtualMachine& vm) {
 void SubInstruction::execute(VirtualMachine& vm) {
     int op1 = vm.getRegister(destReg).getValue();
     int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
-
     int result = op1 - op2;
     vm.getRegister(destReg).setValue(result);
-
-    // Passing -op2 helps P2's carry flag logic work correctly
-    vm.getFlags().setFlags(result, op1, -op2); 
+    vm.getFlags().setFlags(result, op1, -op2);
 }
 
 void MulInstruction::execute(VirtualMachine& vm) {
     int op1 = vm.getRegister(destReg).getValue();
     int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
-
     int result = op1 * op2;
     vm.getRegister(destReg).setValue(result);
-    vm.getFlags().setFlags(result, op1, op2); 
+    vm.getFlags().setFlags(result, op1, op2);
 }
 
 void DivInstruction::execute(VirtualMachine& vm) {
     int op1 = vm.getRegister(destReg).getValue();
     int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
-
-    if (op2 == 0) {
-        cerr << "Arithmetic Error: Division by zero." << endl;
-        exit(1);
-    }
-
+    if (op2 == 0) { cerr << "Division by zero\n"; exit(1); }
     int result = op1 / op2;
     vm.getRegister(destReg).setValue(result);
     vm.getFlags().setFlags(result, op1, op2);
@@ -791,7 +790,6 @@ void DivInstruction::execute(VirtualMachine& vm) {
 void IncInstruction::execute(VirtualMachine& vm) {
     int op1 = vm.getRegister(destReg).getValue();
     int result = op1 + 1;
-
     vm.getRegister(destReg).setValue(result);
     vm.getFlags().setFlags(result, op1, 1);
 }
@@ -799,25 +797,28 @@ void IncInstruction::execute(VirtualMachine& vm) {
 void DecInstruction::execute(VirtualMachine& vm) {
     int op1 = vm.getRegister(destReg).getValue();
     int result = op1 - 1;
-
     vm.getRegister(destReg).setValue(result);
     vm.getFlags().setFlags(result, op1, -1);
 }
 
-// P2 fills:
+// ============================================================
+// P2 execute() bodies — helyz
+// ============================================================
 void ShlInstruction::execute(VirtualMachine& vm) {
     int original = vm.getRegister(registerNum).getValue();
     int shifted  = original << amount;
     vm.getRegister(registerNum).setValue(shifted);
     vm.getFlags().setFlags(shifted, original, 0);
 }
+
 void ShrInstruction::execute(VirtualMachine& vm) {
-    int original = vm.getRegister(registerNum).getValue();
+    int     original   = vm.getRegister(registerNum).getValue();
     uint8_t asUnsigned = static_cast<uint8_t>(original);
-    int shifted        = static_cast<int>(asUnsigned >> amount);
+    int     shifted    = static_cast<int>(asUnsigned >> amount);
     vm.getRegister(registerNum).setValue(shifted);
     vm.getFlags().setFlags(shifted, original, 0);
 }
+
 void RolInstruction::execute(VirtualMachine& vm) {
     int     original = vm.getRegister(registerNum).getValue();
     uint8_t uval     = static_cast<uint8_t>(original);
@@ -829,6 +830,7 @@ void RolInstruction::execute(VirtualMachine& vm) {
     vm.getRegister(registerNum).setValue(result);
     vm.getFlags().setFlags(result, original, 0);
 }
+
 void RorInstruction::execute(VirtualMachine& vm) {
     int     original = vm.getRegister(registerNum).getValue();
     uint8_t uval     = static_cast<uint8_t>(original);
@@ -840,100 +842,70 @@ void RorInstruction::execute(VirtualMachine& vm) {
     vm.getRegister(registerNum).setValue(result);
     vm.getFlags().setFlags(result, original, 0);
 }
+
 void PushInstruction::execute(VirtualMachine& vm) {
-    int valueToSave = vm.getRegister(registerNum).getValue();
-    vm.getCPU().push(valueToSave);
+    vm.getCPU().push(vm.getRegister(registerNum).getValue());
 }
+
 void PopInstruction::execute(VirtualMachine& vm) {
-    int poppedValue = vm.getCPU().pop();
-    vm.getRegister(registerNum).setValue(poppedValue);
-    vm.getFlags().setFlags(poppedValue, 0, 0);
+    int val = vm.getCPU().pop();
+    vm.getRegister(registerNum).setValue(val);
+    vm.getFlags().setFlags(val, 0, 0);
 }
+
 void FlagRegister::setFlags(int result, int op1, int op2) {
     int8_t narrowed = static_cast<int8_t>(result);
     ZF = (narrowed == 0);
     OF = (result > 127);
     UF = (result < -128);
-    unsigned int unsignedSum =
+    unsigned int uSum =
         static_cast<unsigned int>(static_cast<uint8_t>(op1)) +
         static_cast<unsigned int>(static_cast<uint8_t>(op2));
-    CF = (unsignedSum > 0xFF);
+    CF = (uSum > 0xFF);
 }
 
-// P3 fills:
-// Prompts user, validates range  -128..127, set flags.
-void InputInstruction::execute(VirtualMachine& vm)   { 
+// ============================================================
+// P3 execute() bodies — [P3]
+// ============================================================
+void InputInstruction::execute(VirtualMachine& vm) {
     int val;
     cout << "?" << endl;
     cin >> val;
-
-    // Clamp & flag
-    if (val > 127) {
-        vm.getFlags().setFlags(val, 0, 0); // trigger OF
-        val = 127;
-    } else if (val < -128 ) {
-        vm.getFlags().setFlags(val, 0, 0); // trigger UF
-        val = -128;
-    } else {
-        vm.getFlags().setFlags(val, 0, 0); // handles ZF
-    }
+    if (val > 127)   val = 127;
+    if (val < -128)  val = -128;
     vm.getRegister(registerNum).setValue(val);
+    vm.getFlags().setFlags(val, 0, 0);
 }
 
-// Display <Rn>
-// Prints the signed decimal value in the register.
 void DisplayInstruction::execute(VirtualMachine& vm) {
     cout << vm.getRegister(registerNum).getValue() << endl;
 }
 
-// LOAD R1, [20] - direct address
+// LOAD R1, [20] — direct address
 void LoadRegInstruction::execute(VirtualMachine& vm) {
-    if (addr < 0 || addr > 63) {
-        cerr << "LOAD: address " << addr << " out of range" << endl;
-        exit(1);
-    }
     int val = vm.getMemory().read(addr);
     vm.getRegister(registerNum).setValue(val);
     vm.getFlags().setFlags(val, 0, 0);
 }
 
-// LOAD R1, [R2] - register-indirect address
+// LOAD R1, [R2] — address held in register
 void LoadMemInstruction::execute(VirtualMachine& vm) {
     int addr = vm.getRegister(addrReg).getValue();
-    if (addr < 0 || addr > 63) {
-        cerr << "LOAD: address " << addr << " out of range" << endl;
-        exit(1);
-    }
-    int val = vm.getMemory().read(addr);
+    int val  = vm.getMemory().read(addr);
     vm.getRegister(registerNum).setValue(val);
     vm.getFlags().setFlags(val, 0, 0);
 }
 
-// STORE 20, R3 - direct address, source register
-void StoreRegInstruction::execute(VirtualMachine& vm){
-    if (addr < 0 || addr > 63) {
-        cerr << "STORE: address " << addr << " out of range" << endl;
-        exit(1);
-    }
-    int val = vm.getRegister(registerNum).getValue();
-    vm.getMemory().write(addr, val);
-    // STORE does not update flags 
+// STORE R1, 10 — source register, direct destination address
+void StoreRegInstruction::execute(VirtualMachine& vm) {
+    vm.getMemory().write(addr, vm.getRegister(registerNum).getValue());
 }
 
-// STORE [R2], R1 - address-in-register, source register
-void StoreMemInstruction::execute(VirtualMachine& vm){
+// STORE R1, [R2] — source register, destination address in register
+void StoreMemInstruction::execute(VirtualMachine& vm) {
     int addr = vm.getRegister(addrReg).getValue();
-    if (addr < 0 || addr > 63) {
-        cerr << "STORE: address " << addr << " out of range" << endl;
-        exit(1);
-    }
-    int val = vm.getRegister(registerNum).getValue();
-    vm.getMemory().write(addr, val);
-    // STORE does not update flags
+    vm.getMemory().write(addr, vm.getRegister(registerNum).getValue());
 }
-
-// P1 fills last (after all print() methods are done):
-void VirtualMachine::printState() const { /* P1 fills last */ }
 
 // ============================================================
 // main  — CHIAM JUIN HOONG
