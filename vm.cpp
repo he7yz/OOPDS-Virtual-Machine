@@ -5,19 +5,16 @@
 #include <cstdint>
 using namespace std;
 
-// Flag selector — P1 defines, P2 uses in FlagRegister
+// flag selector used by RESET and FlagRegister
 enum FlagCode { FLAG_CF = 0, FLAG_ZF = 1, FLAG_OF = 2, FLAG_UF = 3 };
 
-// ============================================================
-// CustomVector<T>  — CHIAM JUIN HOONG
-// Dynamic array. Replaces std::vector.
-// ============================================================
+// CustomVector<T> Chiam Juin Hoong
 template <typename T>
 class CustomVector {
     T*  data;
     int sz;
     int cap;
- 
+
     void grow() {
         cap *= 2;
         T* tmp = new T[cap];
@@ -25,16 +22,16 @@ class CustomVector {
         delete[] data;
         data = tmp;
     }
- 
+
 public:
     CustomVector() : sz(0), cap(8) { data = new T[cap]; }
     ~CustomVector() { delete[] data; }
- 
+
     void push_back(const T& item) {
         if (sz == cap) grow();
         data[sz++] = item;
     }
- 
+
     T& get(int i) {
         if (i < 0 || i >= sz) {
             cerr << "CustomVector: index out of bounds" << endl;
@@ -42,7 +39,8 @@ public:
         }
         return data[i];
     }
- 
+
+    // const version needed since printState() is a const method
     const T& get(int i) const {
         if (i < 0 || i >= sz) {
             cerr << "CustomVector: index out of bounds" << endl;
@@ -51,19 +49,11 @@ public:
         return data[i];
     }
 
-    // overloaded [] for getting i
-    T& operator[](int i)       { return get(i); }
-    const T& operator[](int i) const { return get(i); }
- 
-    int getSize() const { return sz; }
+    int  getSize() const { return sz; }
     bool isEmpty() const { return sz == 0; }
 };
 
-
-// ============================================================
-// CustomStack<T>  — Author: helyz
-// Fixed 8-slot stack used inside CPU.
-// ============================================================
+// CustomStack<T> Helyz
 template <typename T>
 class CustomStack {
     T   data[8];
@@ -85,10 +75,7 @@ public:
     bool isEmpty() const { return top < 0;  }
 };
 
-// ============================================================
-// CustomQueue<T>  — Author: [P3]
-// Circular array queue. Stores Instruction* during run.
-// ============================================================
+// CustomQueue<T> P3
 template <typename T>
 class CustomQueue {
     T*  data;
@@ -117,11 +104,7 @@ public:
     bool isEmpty() const { return sz == 0; }
 };
 
-// ============================================================
-// Register (abstract base)  — Author: [P3]
-// GeneralRegister             — Author: [P3]
-// FlagRegister                — Author: Helyz
-// ============================================================
+// Register P3
 class Register {
 protected:
     int value;
@@ -139,16 +122,14 @@ public:
     GeneralRegister(const string& n) : name(n) { value = 0; }
     int  getValue() const  { return value; }
     void setValue(int v)   { value = (int8_t)v; }
+    // prints e.g. #0044# for positive, #-005# for negative
     void print() const {
-        // NOTE (P3): current code prints unsigned for negatives
-        // e.g. -5 → #0251. Decision from Q16 is #-005. Fix this.
         int v = value;
         if (v < 0) {
-            cout << "#";
-            int display = (v < 0) ? (v + 256) : v;
-            if (display < 1000) cout << "0";
-            if (display < 100)  cout << "0";
-            if (display < 10)   cout << "0";
+            cout << "#-";
+            int display = -v;
+            if (display < 100) cout << "0";
+            if (display < 10)  cout << "0";
             cout << display;
         } else {
             cout << "#";
@@ -179,21 +160,17 @@ public:
     bool getOF() const { return OF; }
     bool getUF() const { return UF; }
 
-    // NOTE (P2): confirm flag print order matches spec diagram.
-    // PDF p.2 lists CF, ZF, UF, OF top-to-bottom — verify before submit.
+    // Outputs CF, ZF, UF, OF
     void print() const {
         cout << "#Flags#"
              << (CF ? 1 : 0) << "#"
              << (ZF ? 1 : 0) << "#"
-             << (OF ? 1 : 0) << "#"
-             << (UF ? 1 : 0) << "#\n";
+             << (UF ? 1 : 0) << "#"
+             << (OF ? 1 : 0) << "#\n";
     }
 };
 
-// ============================================================
-// Memory  — Author: [P4]
-// 64-cell signed byte array.
-// ============================================================
+// Memory P4
 class Memory {
     int8_t mem[64];
 public:
@@ -239,30 +216,22 @@ public:
     }
 };
 
-// ============================================================
-// CPU  — Author: Helyz
-// Composition: owns Memory and CustomStack.
-// Aggregation: uses FlagRegister (can exist independently of CPU).
-// Also owns the program counter.
-// ============================================================
+// CPU Helyz
 class CPU {
-    int              pc;
-    CustomStack<int> stack;
-    Memory           memory;   // composition  — CPU owns Memory
-    FlagRegister     flags;    // aggregation  — CPU uses FlagRegister
+    int               pc;
+    CustomStack<int>  stack;
+    Memory            memory;   // composition CPU owns Memory
+    FlagRegister&     flags;    // aggregation CPU has a FlagRegister
 public:
-    CPU() : pc(0) {}
+    CPU(FlagRegister& f) : pc(0), flags(f) {}
     int  getPC()        const { return pc; }
     void incrementPC()        { pc++; }
     void push(int val)        { stack.push(val); }
     int  pop()                { return stack.pop(); }
     int  peek()         const { return stack.peek(); }
 
-    // non-const accessors — used by execute() bodies via vm.getX()
-    Memory&             getMemory()       { return memory; }
-    FlagRegister&       getFlags()        { return flags;  }
-
-    // const accessors — used by printState() const
+    Memory&       getMemory()       { return memory; }
+    FlagRegister& getFlags()        { return flags;  }
     const Memory&       getMemory() const { return memory; }
     const FlagRegister& getFlags()  const { return flags;  }
 
@@ -275,32 +244,28 @@ public:
     }
 };
 
-// ============================================================
-// VirtualMachine  — CHIAM JUIN HOONG
-// ============================================================
+// VirtualMachine — Juin Hoong
 class VirtualMachine {
-    CPU           cpu;
+    FlagRegister flags;   // composition vm owns FlagRegister
+    CPU          cpu;
     CustomVector<GeneralRegister> registers;
 public:
-    VirtualMachine() {
+    VirtualMachine() : cpu(flags) {
         const string names[] =
             {"R0","R1","R2","R3","R4","R5","R6","R7"};
         for (int i = 0; i < 8; i++)
             registers.push_back(GeneralRegister(names[i]));
     }
 
-    CPU&             getCPU()           { return cpu;                }
-    GeneralRegister& getRegister(int i) { return registers.get(i);  }
-    FlagRegister&    getFlags()         { return cpu.getFlags();     }
-    Memory&          getMemory()        { return cpu.getMemory();    }
+    CPU&             getCPU()           { return cpu;             }
+    GeneralRegister& getRegister(int i) { return registers.get(i);}
+    FlagRegister&    getFlags()         { return flags;           }
+    Memory&          getMemory()        { return cpu.getMemory(); }
 
     void printState() const;
 };
 
-// ============================================================
-// Instruction  — CHIAM JUIN HOONG
-// Abstract base for all assembly commands.
-// ============================================================
+// Instruction Chiam Juin Hoong
 class Instruction {
 public:
     virtual void   execute(VirtualMachine& vm) = 0;
@@ -308,66 +273,65 @@ public:
     virtual ~Instruction() {}
 };
 
-// ============================================================
-// ArithmeticInstruction  — CHIAM JUIN HOONG shell, [P4] fills leaves
-// isNum: true  → srcVal is a literal integer
-//        false → srcVal is a register index
-// ============================================================
+// ArithmeticInstruction P4
 class ArithmeticInstruction : public Instruction {
 protected:
     int  destReg;
     int  srcVal;
     bool isNum;
 public:
-    ArithmeticInstruction(int d, int s, bool n) : destReg(d), srcVal(s), isNum(n) {}
+    ArithmeticInstruction(int d, int s, bool n)
+        : destReg(d), srcVal(s), isNum(n) {}
     string getName() { return "ARITH"; }
 };
 
 class AddInstruction : public ArithmeticInstruction {
 public:
-    AddInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
-    void execute(VirtualMachine& vm);
+    AddInstruction(int d, int s, bool n)
+        : ArithmeticInstruction(d, s, n) {}
+    void   execute(VirtualMachine& vm);
     string getName() { return "ADD"; }
 };
 
 class SubInstruction : public ArithmeticInstruction {
 public:
-    SubInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
-    void execute(VirtualMachine& vm);
+    SubInstruction(int d, int s, bool n)
+        : ArithmeticInstruction(d, s, n) {}
+    void   execute(VirtualMachine& vm);
     string getName() { return "SUB"; }
 };
 
 class MulInstruction : public ArithmeticInstruction {
 public:
-    MulInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
-    void execute(VirtualMachine& vm);
+    MulInstruction(int d, int s, bool n)
+        : ArithmeticInstruction(d, s, n) {}
+    void   execute(VirtualMachine& vm);
     string getName() { return "MUL"; }
 };
 
 class DivInstruction : public ArithmeticInstruction {
 public:
-    DivInstruction(int d, int s, bool n) : ArithmeticInstruction(d, s, n) {}
-    void execute(VirtualMachine& vm);
+    DivInstruction(int d, int s, bool n)
+        : ArithmeticInstruction(d, s, n) {}
+    void   execute(VirtualMachine& vm);
     string getName() { return "DIV"; }
 };
 
 class IncInstruction : public ArithmeticInstruction {
 public:
     IncInstruction(int d) : ArithmeticInstruction(d, 1, true) {}
-    void execute(VirtualMachine& vm);
+    void   execute(VirtualMachine& vm);
     string getName() { return "INC"; }
 };
 
 class DecInstruction : public ArithmeticInstruction {
 public:
     DecInstruction(int d) : ArithmeticInstruction(d, 1, true) {}
-    void execute(VirtualMachine& vm);
+    void   execute(VirtualMachine& vm);
     string getName() { return "DEC"; }
 };
 
-// ============================================================
-// ShiftInstruction  — CHIAM JUIN HOONG shell, helyz fills leaves
-// ============================================================
+// ShiftInstruction Helyz
 class ShiftInstruction : public Instruction {
 protected:
     int registerNum;
@@ -405,9 +369,7 @@ public:
     string getName() { return "ROR"; }
 };
 
-// ============================================================
-// IOInstruction  — CHIAM JUIN HOONG shell, [P3] fills leaves
-// ============================================================
+// IOInstruction P3
 class IOInstruction : public Instruction {
 protected:
     int registerNum;
@@ -451,7 +413,6 @@ public:
 };
 
 // STORE R1, 10  — source register, direct destination address
-// (amended syntax: register comes first, address second)
 class StoreRegInstruction : public IOInstruction {
     int addr;
 public:
@@ -462,7 +423,6 @@ public:
 };
 
 // STORE R1, [R2] — source register, destination address held in register
-// (amended syntax: register comes first, indirect address second)
 class StoreMemInstruction : public IOInstruction {
     int addrReg;
 public:
@@ -472,10 +432,7 @@ public:
     string getName() { return "STORE"; }
 };
 
-// ============================================================
-// MoveInstruction  — CHIAM JUIN HOONG
-// Three variants: reg-reg, immediate, register-indirect
-// ============================================================
+// MoveInstruction Chiam Juin Hoong
 class MoveInstruction : public Instruction {
 protected:
     int rDest;
@@ -501,7 +458,7 @@ public:
     string getName() { return "MOV"; }
 };
 
-// MOV R0, [R1] — reads memory at address stored in R1
+// MOV R0, [R1] reads memory at address stored in R1
 class MovIndirectInstruction : public MoveInstruction {
     int rSrc;
 public:
@@ -511,10 +468,7 @@ public:
     string getName() { return "MOV"; }
 };
 
-// ============================================================
-// ResetInstruction  — CHIAM JUIN HOONG
-// Direct child of Instruction. Zeroes one specific flag.
-// ============================================================
+// ResetInstruction Chiam Juin Hoong
 class ResetInstruction : public Instruction {
     int flagTarget; // 0=CF 1=ZF 2=OF 3=UF  (see FlagCode enum)
 public:
@@ -523,9 +477,7 @@ public:
     string getName() { return "RESET"; }
 };
 
-// ============================================================
-// StackInstruction  — CHIAM JUIN HOONG shell, helyz fills leaves
-// ============================================================
+// StackInstruction Helyz
 class StackInstruction : public Instruction {
 protected:
     int registerNum;
@@ -548,25 +500,29 @@ public:
     string getName() { return "POP"; }
 };
 
-// ============================================================
-// Runner  — CHIAM JUIN HOONG
-// Phase 1: loadProgram  — reads .asm into rawLines
-// Phase 2: parseProgram — builds Instruction* queue
-// Phase 3: run          — executes queue, dumps state
-// ============================================================
-    class Runner {
+// Runner Chiam Juin Hoong
+class Runner {
     VirtualMachine            vm;
     CustomVector<string>      rawLines;
     CustomQueue<Instruction*> program;
 
-    // ── Operand helpers ─────────────────────────────────────
+    // operand helpers
+    // rejects malformed register names like "R10" (only R0-R7 exist)
     int extractReg(const string& s) {
-        // convert ascii char to string
+        if (s.size() != 2 || s[0] != 'R' || s[1] < '0' || s[1] > '7') {
+            cerr << "Invalid register: " << s << endl;
+            exit(1);
+        }
         return s[1] - '0';
     }
 
+    // rejects malformed indirect register tokens like "[R10]"
     int extractIndirectReg(const string& s) {
-        // convert ascii char to string
+        if (s.size() != 4 || s[0] != '[' || s[1] != 'R' ||
+            s[2] < '0' || s[2] > '7' || s[3] != ']') {
+            cerr << "Invalid indirect register: " << s << endl;
+            exit(1);
+        }
         return s[2] - '0';
     }
 
@@ -577,21 +533,17 @@ public:
         return val;
     }
 
-    // stoi
     int extractNum(const string& s) {
         int val = 0, sign = 1, i = 0;
-        if (!s.empty() && s[0] == '-') {
-            sign = -1;
-            // start at [1] instead of [0] because -ve
-            i = 1;
-        }
-        for (; i < (int)s.size(); i++)
-            val = (val * 10) + (s[i] - '0');   // convert ascii char to string
+        if (!s.empty() && s[0] == '-') { sign = -1; i = 1; }
+        for (; i < (int)s.size(); i++) val = val * 10 + (s[i] - '0');
         return sign * val;
     }
 
-    // ── Parse-group helpers ──────────────────────────────────
-    Instruction* parseMoveGroup(const string& op,const string& op1, const string& op2) {
+    // Parse-group helpers
+    Instruction* parseMoveGroup(const string& op,
+                                const string& op1,
+                                const string& op2) {
         if (op == "RESET") {
             int f = FLAG_CF;
             if      (op1 == "ZF") f = FLAG_ZF;
@@ -607,13 +559,13 @@ public:
         return new MovImmInstruction(dest, extractNum(op2));
     }
 
-    Instruction* parseArith(const string& op, const string& op1, const string& op2) {
+    Instruction* parseArith(const string& op,
+                             const string& op1,
+                             const string& op2) {
         int dest = extractReg(op1);
         if (op == "INC") return new IncInstruction(dest);
         if (op == "DEC") return new DecInstruction(dest);
         bool numMode = (op2[0] != 'R');
-
-        // decides ADD R1, 2     OR    ADD R1, R2
         int src = numMode ? extractNum(op2) : extractReg(op2);
         if (op == "ADD") return new AddInstruction(dest, src, numMode);
         if (op == "SUB") return new SubInstruction(dest, src, numMode);
@@ -621,7 +573,9 @@ public:
         return new DivInstruction(dest, src, numMode);
     }
 
-    Instruction* parseShift(const string& op, const string& op1, const string& op2) {
+    Instruction* parseShift(const string& op,
+                             const string& op1,
+                             const string& op2) {
         int reg = extractReg(op1);
         int amt = extractNum(op2);
         if (op == "SHL") return new ShlInstruction(reg, amt);
@@ -630,8 +584,10 @@ public:
         return new RorInstruction(reg, amt);
     }
 
-    Instruction* parseIO(const string& op, const string& op1, const string& op2) {
-        if (op == "INPUT") return new InputInstruction(extractReg(op1));
+    Instruction* parseIO(const string& op,
+                          const string& op1,
+                          const string& op2) {
+        if (op == "INPUT")   return new InputInstruction(extractReg(op1));
         if (op == "DISPLAY") return new DisplayInstruction(extractReg(op1));
         if (op == "LOAD") {
             int dest = extractReg(op1);
@@ -639,8 +595,7 @@ public:
                 return new LoadMemInstruction(dest, extractIndirectReg(op2));
             return new LoadRegInstruction(dest, extractAddr(op2));
         }
-        // FIX (BUG 1) — STORE syntax amended to STORE R1, 10 / STORE R1, [R2]
-        // op1 is now always the source register; op2 is the destination.
+        // STORE R1, 10  or  STORE R1, [R2] — op1 is always the source reg
         int srcReg = extractReg(op1);
         if (op2[0] == '[')
             return new StoreMemInstruction(srcReg, extractIndirectReg(op2));
@@ -681,11 +636,14 @@ public:
 
             if (opcode == "MOV" || opcode == "RESET")
                 instr = parseMoveGroup(opcode, op1, op2);
-            else if (opcode=="ADD" || opcode=="SUB" || opcode=="MUL" || opcode=="DIV" || opcode=="INC" || opcode=="DEC")
+            else if (opcode=="ADD" || opcode=="SUB" || opcode=="MUL"
+                  || opcode=="DIV" || opcode=="INC" || opcode=="DEC")
                 instr = parseArith(opcode, op1, op2);
-            else if (opcode=="SHL" || opcode=="SHR" || opcode=="ROL" || opcode=="ROR")
+            else if (opcode=="SHL" || opcode=="SHR"
+                  || opcode=="ROL" || opcode=="ROR")
                 instr = parseShift(opcode, op1, op2);
-            else if (opcode=="LOAD"  || opcode=="STORE" || opcode=="INPUT" || opcode=="DISPLAY")
+            else if (opcode=="LOAD"  || opcode=="STORE"
+                  || opcode=="INPUT" || opcode=="DISPLAY")
                 instr = parseIO(opcode, op1, op2);
             else if (opcode == "PUSH" || opcode == "POP")
                 instr = parseStack(opcode, op1);
@@ -702,6 +660,7 @@ public:
             Instruction* inst = program.dequeue();
             inst->execute(vm);
             vm.getCPU().incrementPC();
+            delete inst;   // free heap instruction after execution
         }
         vm.printState();
     }
@@ -709,9 +668,7 @@ public:
     ~Runner() {}
 };
 
-// ============================================================
-// P1 execute() — MOV x3, RESET   — CHIAM JUIN HOONG
-// ============================================================
+// MOV / RESET execute() Chiam Juin Hoong
 
 void MovRegRegInstruction::execute(VirtualMachine& vm) {
     int val = vm.getRegister(rSrc).getValue();
@@ -735,25 +692,19 @@ void ResetInstruction::execute(VirtualMachine& vm) {
     vm.getFlags().resetFlag(static_cast<FlagCode>(flagTarget));
 }
 
-// ============================================================
-// FIX (BUG 3) — VirtualMachine::printState()  — CHIAM JUIN HOONG
-// Calls each component's print() in the exact order the spec requires.
-// Format: #Begin# / #Registers...# / #Flags...# / #PC...# / #Memory# / #End#
-// ============================================================
+// VirtualMachine::printState() Chiam Juin Hoong
 void VirtualMachine::printState() const {
     cout << "#Begin#\n";
     cout << "#Registers";
     for (int i = 0; i < 8; i++) registers.get(i).print();
     cout << "#\n";
-    cpu.getFlags().print();
+    flags.print();
     cpu.print();
     cpu.getMemory().print();
     cout << "#End#\n";
 }
 
-// ============================================================
-// P4 execute() bodies — [P4]
-// ============================================================
+// ADD / SUB / MUL / DIV / INC / DEC execute() P4
 void AddInstruction::execute(VirtualMachine& vm) {
     int op1 = vm.getRegister(destReg).getValue();
     int op2 = isNum ? srcVal : vm.getRegister(srcVal).getValue();
@@ -801,9 +752,7 @@ void DecInstruction::execute(VirtualMachine& vm) {
     vm.getFlags().setFlags(result, op1, -1);
 }
 
-// ============================================================
-// P2 execute() bodies — helyz
-// ============================================================
+// shift / stack execute() Helyz
 void ShlInstruction::execute(VirtualMachine& vm) {
     int original = vm.getRegister(registerNum).getValue();
     int shifted  = original << amount;
@@ -864,9 +813,7 @@ void FlagRegister::setFlags(int result, int op1, int op2) {
     CF = (uSum > 0xFF);
 }
 
-// ============================================================
-// P3 execute() bodies — [P3]
-// ============================================================
+// IO execute() bodies P3
 void InputInstruction::execute(VirtualMachine& vm) {
     int val;
     cout << "?" << endl;
@@ -881,14 +828,14 @@ void DisplayInstruction::execute(VirtualMachine& vm) {
     cout << vm.getRegister(registerNum).getValue() << endl;
 }
 
-// LOAD R1, [20] — direct address
+// LOAD R1, [20] direct address
 void LoadRegInstruction::execute(VirtualMachine& vm) {
     int val = vm.getMemory().read(addr);
     vm.getRegister(registerNum).setValue(val);
     vm.getFlags().setFlags(val, 0, 0);
 }
 
-// LOAD R1, [R2] — address held in register
+// LOAD R1, [R2] address held in register
 void LoadMemInstruction::execute(VirtualMachine& vm) {
     int addr = vm.getRegister(addrReg).getValue();
     int val  = vm.getMemory().read(addr);
@@ -896,20 +843,18 @@ void LoadMemInstruction::execute(VirtualMachine& vm) {
     vm.getFlags().setFlags(val, 0, 0);
 }
 
-// STORE R1, 10 — source register, direct destination address
+// STORE R1, 10 source register, direct destination address
 void StoreRegInstruction::execute(VirtualMachine& vm) {
     vm.getMemory().write(addr, vm.getRegister(registerNum).getValue());
 }
 
-// STORE R1, [R2] — source register, destination address in register
+// STORE R1, [R2] source register, destination address in register
 void StoreMemInstruction::execute(VirtualMachine& vm) {
     int addr = vm.getRegister(addrReg).getValue();
     vm.getMemory().write(addr, vm.getRegister(registerNum).getValue());
 }
 
-// ============================================================
-// main  — CHIAM JUIN HOONG
-// ============================================================
+// main Chiam Juin Hoong
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         cerr << "Usage: " << argv[0] << " <program.asm>" << endl;
