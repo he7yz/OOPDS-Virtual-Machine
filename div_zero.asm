@@ -1,0 +1,3 @@
+MOV R0, 10
+MOV R1, 0
+DIV R0, R1
