@@ -1,0 +1,3 @@
+MOV R0, 1
+ROR R0, 1
+DISPLAY R0
